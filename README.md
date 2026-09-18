@@ -20,3 +20,5 @@ Open [http://localhost:3000](http://localhost:3000).
 | --- | --- | --- |
 | Dispatcher | `dispatcher` | `water123` |
 | Driver | `driver` | `water123` |
+
+<!-- QA: checking that a removed repository gets no Impeccable check. Safe to close. -->
