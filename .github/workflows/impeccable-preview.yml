@@ -19,8 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+      # Node 24, not the 20 Impeccable generates: package.json pins
+      # pnpm@11.10.0, which needs Node >= 22.13. On Node 20 the pnpm cache
+      # probe in this step dies with "No such built-in module: node:sqlite".
       - uses: actions/setup-node@v4
-        with: { node-version: '20', cache: pnpm }
+        with: { node-version: '24', cache: pnpm }
       - id: install
         shell: bash
         run: |
