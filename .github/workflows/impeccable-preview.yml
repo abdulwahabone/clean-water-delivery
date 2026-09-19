@@ -28,6 +28,12 @@ jobs:
         run: |
           exec > >(tee impeccable-step.log) 2>&1
           pnpm install --frozen-lockfile
+      - name: Prepare
+        id: prepare
+        shell: bash
+        run: |
+          exec > >(tee impeccable-step.log) 2>&1
+          pnpm db:push
       - id: build
         shell: bash
         run: |
