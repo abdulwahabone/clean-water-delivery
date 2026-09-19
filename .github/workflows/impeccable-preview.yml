@@ -19,11 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      # Node 24, not the 20 Impeccable generates: package.json pins
-      # pnpm@11.10.0, which needs Node >= 22.13. On Node 20 the pnpm cache
-      # probe in this step dies with "No such built-in module: node:sqlite".
+        id: setup
       - uses: actions/setup-node@v4
-        with: { node-version: '24', cache: pnpm }
+        id: setup-2
+        with: { node-version: 'lts/*', cache: pnpm }
       - id: install
         shell: bash
         run: |
@@ -65,8 +64,16 @@ jobs:
             -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
             -d "{\"url\": \"$URL\"}")
           echo "$REG"
-          echo "impeccable access check: $(echo "$REG" | jq -r '.access.detail // "not run"')"
           POLL=$(echo "$REG" | jq -r .poll)
+          POLLED="$REG"
+          WAIT=2
+          for i in $(seq 1 8); do
+            NEXT=$(curl -sS "https://impeccable.reviews$POLL" || true)
+            if echo "$NEXT" | jq -e '.access' >/dev/null 2>&1; then POLLED="$NEXT"; fi
+            [ "$(echo "$POLLED" | jq -r '.access.access // "unknown"')" = "unreachable" ] || break
+            sleep $WAIT; WAIT=$(( WAIT * 2 > 20 ? 20 : WAIT * 2 ))
+          done
+          echo "impeccable access check: $(echo "$POLLED" | jq -r '.access.detail // "not run"')"
           for i in $(seq 1 120); do
             STATE=$(curl -sS "https://impeccable.reviews$POLL" | jq -r .state)
             [ "$STATE" = "done" ] && break
@@ -80,6 +87,6 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=impeccable.reviews" | jq -r .value)
           LOG=$({ for f in impeccable-step.log app.log tunnel.log; do [ -s "$f" ] && { echo "== $f"; tail -c 3000 "$f"; }; done; true; } | sed -E 's#://([^:/@[:space:]]+):[^@[:space:]]+@#://\1:***@#g')
           jq -n --arg log "$LOG" --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            '{"outcomes": {"install": "${{ steps.install.outcome }}", "prepare": "${{ steps.prepare.outcome }}", "build": "${{ steps.build.outcome }}", "seed": "${{ steps.seed.outcome }}", "start": "${{ steps.start.outcome }}", "tunnel": "${{ steps.tunnel.outcome }}"}, "log": $log, "runUrl": $url}' \
+            '{"outcomes": {"setup": "${{ steps.setup.outcome }}", "setup-2": "${{ steps.setup-2.outcome }}", "install": "${{ steps.install.outcome }}", "prepare": "${{ steps.prepare.outcome }}", "build": "${{ steps.build.outcome }}", "seed": "${{ steps.seed.outcome }}", "start": "${{ steps.start.outcome }}", "tunnel": "${{ steps.tunnel.outcome }}"}, "log": $log, "runUrl": $url}' \
             | curl -sS -X POST https://impeccable.reviews/api/previews/report \
               -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data-binary @-
