@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           exec > >(tee impeccable-step.log) 2>&1
-          pnpm db:push
+          mkdir -p data && pnpm db:push
       - id: build
         shell: bash
         run: |
